@@ -260,9 +260,9 @@ proc setupWinCrtMain(ctx: var GenContext) =
   let afterRsi = ctx.buf.data.len - start
   x86.emitPush(ctx.buf.data, x86.RDI)
   let afterRdi = ctx.buf.data.len - start
-  x86.emitSubImm(ctx.buf.data, x86.RSP, Alloc)
+  x86.emitSubImm(ctx.buf.data, x86.RSP, int32(Alloc))
   let afterAlloc = ctx.buf.data.len - start
-  var afterXmm: array[10, int]
+  var afterXmm = default(array[10, int])
   for i in 0 ..< 10:
     x86.emitMovdquStore(ctx.buf.data,
                         x86.MemoryOperand(base: x86.RSP, displacement: int32(16 * i)),
@@ -290,7 +290,7 @@ proc setupWinCrtMain(ctx: var GenContext) =
   for i in 0 ..< 10:
     x86.emitMovdquLoad(ctx.buf.data, x86.XmmRegister(6 + i),
                        x86.MemoryOperand(base: x86.RSP, displacement: int32(16 * i)))
-  x86.emitAddImm(ctx.buf.data, x86.RSP, Alloc)             # the epilogue proper: the
+  x86.emitAddImm(ctx.buf.data, x86.RSP, int32(Alloc))     # the epilogue proper: the
   x86.emitPop(ctx.buf.data, x86.RDI)                       # unwinder recognizes exactly
   x86.emitPop(ctx.buf.data, x86.RSI)                       # `add rsp; pop…; ret`
   x86.emitRet(ctx.buf.data)

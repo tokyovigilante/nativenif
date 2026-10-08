@@ -18,6 +18,9 @@
 ## `typecheck` — take no context. It is set once per proc, beside the mirror in
 ## `GenContext.lenient` that the instruction handlers read.
 
+when defined(nimony):
+  {.feature: "assumeSync".}  # single-threaded tool state
+
 import std / [syncio]
 import nifcore, nifcoreparse   # `toString`: the offending subtree, rendered
 import sem

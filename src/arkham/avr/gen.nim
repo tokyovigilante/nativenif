@@ -34,6 +34,9 @@
 ##    memory, and the accumulator of the multiply.
 ##  * `ProduceBridge` (Z) is the indirect-call target and the flash pointer.
 
+when defined(nimony):
+  {.feature: "assumeSync".}  # single-threaded tool state
+
 import std / assertions
 import std / [tables, sets]
 import nifcore, nifcdecl

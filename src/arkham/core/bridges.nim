@@ -26,6 +26,9 @@
 ##    allocator did. The gap between the last two is exactly the thing design.md
 ##    calls x86-64's open question, and `tightCompositions` counts it.
 
+when defined(nimony):
+  {.feature: "assumeSync".}  # single-threaded tool state
+
 import std / assertions
 import machinedesc, context
 

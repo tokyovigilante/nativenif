@@ -53,7 +53,7 @@
 ## either kind of library depending on the crt build. A direct call reaches both:
 ## an import library provides a `jmp [__imp_<name>]` thunk for every function.
 
-import std / [tables, syncio, algorithm]
+import std / [tables, syncio, algorithm, assertions]
 import "../core" / [context, sem, relocs, buffers]
 import pe, writecommon
 
@@ -194,7 +194,8 @@ proc writeCoffObject*(a: var GenContext; outfile: string) {.canRaise.} =
   template reloc(sec: int; at: int; s: int; t: uint16) =
     w.secs[sec].relocs.add CoffReloc(offset: uint32(at), sym: s, typ: t)
 
-  proc target(sym: Symbol; found: var bool): (int, uint64) =
+  proc target(sym: Symbol; labelPos: Table[int, int]; secText, secData: int;
+              found: var bool): (int, uint64) =
     ## The section and offset an absolute reference to `sym` resolves to: a proc or
     ## rodata label in `.text`, a global in `.data`.
     found = true
@@ -219,7 +220,7 @@ proc writeCoffObject*(a: var GenContext; outfile: string) {.canRaise.} =
     if it.size != 8:
       quit "nifasm: --emit-obj: a " & $it.size & "-byte symbol address is not supported"
     var found = false
-    let (s, off) = target(it.sym, found)
+    let (s, off) = target(it.sym, labelPos, secText, secData, found)
     if found:
       w.secs[secData].data.put64(int(it.off), off)
       reloc(secData, int(it.off), sectionSym(s), RelAddr64)
@@ -271,7 +272,7 @@ proc writeCoffObject*(a: var GenContext; outfile: string) {.canRaise.} =
       if it.size != 8:
         quit "nifasm: --emit-obj: a " & $it.size & "-byte symbol address is not supported"
       var found = false
-      let (s, off) = target(it.sym, found)
+      let (s, off) = target(it.sym, labelPos, secText, secData, found)
       if found:
         let at = labelPos.getOrDefault(it.labelId) + it.blobOff
         text.put64(at, off)

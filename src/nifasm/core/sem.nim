@@ -3,6 +3,7 @@ when defined(nimony):
   # `Scope.parent` is a nilable linked list (the outermost scope has none) and
   # `lookup` answers nil for an unknown name.
   {.feature: "lenientnils".}
+  {.feature: "assumeSync".}  # single-threaded tool state
 
 import std / [tables]
 import tags

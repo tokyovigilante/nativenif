@@ -99,13 +99,14 @@ proc target(w: ObjWriter; a: GenContext; sym: Symbol; found: var bool): (int, in
   else:
     found = false
 
-proc absReloc(w: var ObjWriter; a: GenContext; dest: var seq[Elf64_Rela];
-              offset: int; sym: Symbol; size: int) =
+proc absReloc(w: ObjWriter; a: GenContext; offset: int; sym: Symbol; size: int;
+              found: var bool): Elf64_Rela =
+  ## The relocation for an absolute reference to `sym`; the caller appends it to
+  ## its own list when `found` (taking that list here would alias `w`).
   if size != 8:
     quit "nifasm: --emit-obj: a " & $size & "-byte symbol address is not supported"
-  var found = false
   let (s, addend) = w.target(a, sym, found)
-  if found: dest.add rela(offset, s, R_X86_64_64, addend)
+  result = rela(offset, s, R_X86_64_64, addend)
 
 proc undefSym(w: var ObjWriter; extName: string): int =
   result = w.undef.getOrDefault(extName, -1)
@@ -180,8 +181,10 @@ proc writeElfObject*(a: var GenContext; outfile: string) {.canRaise.} =
   # Symbol-address fields inside a rodata blob.
   for it in a.rodataSymInits:
     if w.labelPos.hasKey(it.labelId):
-      w.absReloc(a, w.relaText, w.labelPos.getOrDefault(it.labelId) + it.blobOff,
-                 it.sym, it.size)
+      var found = false
+      let r = w.absReloc(a, w.labelPos.getOrDefault(it.labelId) + it.blobOff,
+                         it.sym, it.size, found)
+      if found: w.relaText.add r
 
   # ── .data image and relocations ────────────────────────────────────────────
   var dataImage = newSeq[byte](a.bssOffset)
@@ -190,9 +193,13 @@ proc writeElfObject*(a: var GenContext; outfile: string) {.canRaise.} =
       if it.off.int + i < dataImage.len:
         dataImage[it.off.int + i] = byte((it.val shr (8 * i)) and 0xFF)
   for it in a.bssSymInits:
-    w.absReloc(a, w.relaData, int(it.off), it.sym, it.size)
+    var found = false
+    let r = w.absReloc(a, int(it.off), it.sym, it.size, found)
+    if found: w.relaData.add r
   for it in a.rodataRebases:
-    w.absReloc(a, w.relaData, it.owner.size + it.blobOff, it.target, 8)
+    var found = false
+    let r = w.absReloc(a, it.owner.size + it.blobOff, it.target, 8, found)
+    if found: w.relaData.add r
 
   # ── .tdata: one thread's initial block ─────────────────────────────────────
   # Nim thread-locals rarely have initializers; without one the block is `.tbss`
@@ -253,13 +260,13 @@ proc writeElfObject*(a: var GenContext; outfile: string) {.canRaise.} =
                      uint64(a.tlsOffset), 0, 0, 16, 0)
   shdrs.add initShdr(shName[SecRelaText], SHT_RELA, SHF_INFO_LINK, 0,
                      uint64(relaTextOff), uint64(w.relaText.len * sizeof(Elf64_Rela)),
-                     SecSymtab, SecText, 8, uint64(sizeof(Elf64_Rela)))
+                     uint64(SecSymtab), uint64(SecText), 8, uint64(sizeof(Elf64_Rela)))
   shdrs.add initShdr(shName[SecRelaData], SHT_RELA, SHF_INFO_LINK, 0,
                      uint64(relaDataOff), uint64(w.relaData.len * sizeof(Elf64_Rela)),
-                     SecSymtab, SecData, 8, uint64(sizeof(Elf64_Rela)))
+                     uint64(SecSymtab), uint64(SecData), 8, uint64(sizeof(Elf64_Rela)))
   # `sh_info` of a symtab: the index of its first non-local symbol.
   shdrs.add initShdr(shName[SecSymtab], SHT_SYMTAB, 0, 0, uint64(symtabOff),
-                     uint64(w.syms.len * sizeof(Elf64_Sym)), SecStrtab,
+                     uint64(w.syms.len * sizeof(Elf64_Sym)), uint64(SecStrtab),
                      uint64(firstGlobal), 8, uint64(sizeof(Elf64_Sym)))
   shdrs.add initShdr(shName[SecStrtab], SHT_STRTAB, 0, 0, uint64(strtabOff),
                      uint64(w.strtab.len), 0, 0, 1, 0)

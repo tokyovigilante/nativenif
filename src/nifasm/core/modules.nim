@@ -14,7 +14,7 @@
 ## is `typesem.resolveForeignSym`’s job; what lives here is everything around it
 ## that needs no type knowledge at all.
 
-import std / [tables, sets, os, strutils]
+import std / [tables, sets, os, strutils, assertions]
 import nifcore, nifmodules
 import "../../../../nimony/src/lib" / symparser
 import context, diagnostics, cursors, sem

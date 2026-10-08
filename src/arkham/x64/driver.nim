@@ -327,7 +327,8 @@ proc generateX64*(buf: var TokenBuf; inputPath: string; tags: TagPool;
       # Linux: an `importc` that is not a syscall names a symbol of a foreign
       # object or of libc. After the types, like the Windows externs above.
       for i in 0 ..< g.prog.externOrder.len:
-        g.emitSysvExtproc(g.prog.externOrder[i])
+        let ex = g.prog.externOrder[i]
+        g.emitSysvExtproc(ex)
     let globalDecls = g.prog.globalsInOrder()
     for (name, decl) in globalDecls:
       g.genGlobal(name, decl)
