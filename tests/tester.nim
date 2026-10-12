@@ -658,7 +658,13 @@ proc webTests() =
   var ran = 0
   var refused = 0
   var total = 0
-  for file in walkFiles("tests" / "arkham" / "*.c.nif"):
+  # `tests/arkham` is shared with the native back ends; `tests/web` holds the
+  # fixtures only this back end is judged on (expected exit code and output
+  # worked out by hand), because a native oracle would be testing arkham.
+  var fixtures: seq[string] = @[]
+  for dir in ["arkham", "web"]:
+    for file in walkFiles("tests" / dir / "*.c.nif"): fixtures.add file
+  for file in fixtures:
     let stem = file.extractFilename.changeFileExt("").changeFileExt("")
     inc total
     for (target, tool) in tools:

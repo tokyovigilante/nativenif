@@ -1269,9 +1269,14 @@ proc genCtorInto(g: var WebGen; destOff: int; c: Cursor) =
     let ty = t
     skip t                                   # the constructed type
     let rt = resolveType(g.prog, ty)
-    if rt.kind != TagLit or rt.typeKind notin {ObjectT, ArrayT, FlexarrayT}:
+    if rt.kind != TagLit or rt.typeKind notin {ObjectT, UnionT, ArrayT, FlexarrayT}:
       err g, "constructor of a non-aggregate type"
     g.outp.openTree Seq
+    if rt.typeKind == UnionT:
+      # A plain C union has no field list to cover it: `default(U)` is an empty
+      # `oconstr`, and a named member only writes its own bytes. Clear the
+      # whole slot first, as for any other zero-initialized storage.
+      zeroSlot(g, destOff, byteSize(g, ty))
     var elemOff = 0
     var isFirst = true
     while t.hasMore:
@@ -1279,7 +1284,7 @@ proc genCtorInto(g: var WebGen; destOff: int; c: Cursor) =
       var off = 0
       var vt: Cursor = default(Cursor)
       var header = false
-      if rt.typeKind != ObjectT:
+      if rt.typeKind notin {ObjectT, UnionT}:
         val = t
         let et = elemTypeOf(g, ty)
         off = destOff + elemOff
@@ -3130,7 +3135,8 @@ proc genStmt(g: var WebGen; c: var Cursor)   # mutually recursive with genCase
 proc widthLit(g: var WebGen; w: WidthCode; v: int64) =
   ## A constant in the scrutinee's world: BigInt for the 64-bit widths, Number
   ## for the rest, so a comparison never straddles the two.
-  if w in {wI64, wU64}: g.outp.bigIntLit $v
+  if w == wU64: g.outp.bigIntLit $uint64(v)   # a label past 2^63 holds its bits in `v`
+  elif w == wI64: g.outp.bigIntLit $v
   else: g.outp.numLit v
 
 proc caseValue(g: var WebGen; r: Cursor): int64 =
@@ -3139,7 +3145,19 @@ proc caseValue(g: var WebGen; r: Cursor): int64 =
   ## guessed at.
   case r.kind
   of IntLit: intVal(r)
+  of UIntLit: cast[int64](uintVal(r))
   of CharLit: int64(ord(charLit(r)))
+  of TagLit:
+    # `of 0'u32:` arrives as `(suf 0u "u32")`; the suffix only restates the
+    # scrutinee's width, so the label is its inner literal.
+    if r.exprKind != SufC: err g, "unsupported case label: " & $r.kind
+    var t = r
+    var v = 0'i64
+    t.into:
+      v = caseValue(g, t)
+      skip t
+      while t.hasMore: skip t
+    v
   else:
     err g, "unsupported case label: " & $r.kind
 
@@ -3225,7 +3243,7 @@ proc genCase(g: var WebGen; c: Cursor) =
         o.into:
           let rg = o
           skip o
-          if o.kind != TagLit or o.stmtKind != StmtsS:
+          if o.kind != TagLit or o.stmtKind notin {StmtsS, ScopeS}:
             err g, "case branch without a statement list"
           branches.add (rg, o)
           while o.hasMore: skip o

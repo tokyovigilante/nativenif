@@ -1,0 +1,73 @@
+(.nif27)
+(stmts
+ (type :U.0 .
+  (union
+   (fld :a.0 .
+    (i 32))
+   (fld :b.0 .
+    (f 32))))
+ (type :Junk.0 .
+  (array
+   (i 64) 16))
+ (proc :exit.0
+  (params
+   (param :code.0 .
+    (i 32))).
+  (pragmas
+   (importc "exit"))
+  (stmts .))
+ (proc :dirty.0
+  (params)
+  (i 64)
+  .
+  (stmts
+   (var :j.0 . Junk.0 .)
+   (var :i.0 .
+    (i 64)0)
+   (while
+    (lt i.0 16)
+    (stmts
+     (asgn
+      (at j.0 i.0) -1)
+     (asgn i.0
+      (add
+       (i 64) i.0 1))))
+   (ret
+    (at j.0 3))))
+ (proc :zeroed.0
+  (params)
+  (i 32)
+  .
+  (stmts
+   (var :u.0 . U.0
+    (oconstr U.0))
+   (ret
+    (dot u.0 a.0 0))))
+ (proc :named.0
+  (params)
+  (i 32)
+  .
+  (stmts
+   (var :u.0 . U.0
+    (oconstr U.0
+     (kv a.0 40)))
+   (ret
+    (dot u.0 a.0 0))))
+ (proc :main.0
+  (params)
+  (i 32)
+  (pragmas
+   (exportc "main"))
+  (stmts
+   (var :d.0 .
+    (i 64)
+    (call dirty.0))
+   (var :z.0 .
+    (i 32)
+    (call zeroed.0))
+   (call exit.0
+    (add
+     (i 32)
+     (add
+      (i 32) z.0 2)
+     (call named.0))))))

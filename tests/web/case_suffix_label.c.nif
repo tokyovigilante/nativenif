@@ -1,0 +1,67 @@
+(.nif27)
+(stmts
+ (proc :exit.0
+  (params
+   (param :code.0 .
+    (i 32))).
+  (pragmas
+   (importc "exit"))
+  (stmts .))
+ (proc :pick.0
+  (params
+   (param :n.0 .
+    (u 32)))
+  (i 32)
+  .
+  (stmts
+   (case n.0
+    (of
+     (ranges
+      (suf 0u "u32"))
+     (stmts
+      (ret 10)))
+    (of
+     (ranges
+      (suf 4u "u32"))
+     (stmts
+      (ret 20)))
+    (else
+     (stmts
+      (ret 30))))))
+ (proc :big.0
+  (params
+   (param :n.0 .
+    (u 64)))
+  (i 32)
+  .
+  (stmts
+   (case n.0
+    (of
+     (ranges
+      (suf 18446744073709551615u "u64"))
+     (stmts
+      (ret 7)))
+    (else
+     (stmts
+      (ret 1))))))
+ (proc :main.0
+  (params)
+  (i 32)
+  (pragmas
+   (exportc "main"))
+  (stmts
+   (call exit.0
+    (add
+     (i 32)
+     (add
+      (i 32)
+      (call pick.0
+       (suf 4u "u32"))
+      (call pick.0
+       (suf 0u "u32")))
+     (add
+      (i 32)
+      (call big.0
+       (suf 18446744073709551615u "u64"))
+      (call big.0
+       (suf 5u "u64"))))))))

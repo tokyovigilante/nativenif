@@ -143,9 +143,13 @@ targets are single-threaded:
 ## Verification
 
 `webTests` in `tests/tester.nim` pushes every `tests/arkham/*.c.nif` fixture
-through BOTH targets. Each one must produce a module, apart from an explicit
-refusal list, and with `node` on PATH each module RUNS and must match the
-native oracle's recorded exit code and output. The two renderers print one
+and every `tests/web/*.c.nif` one through BOTH targets. `tests/web` holds the
+fixtures only this back end is judged on (a Leng shape hexer produces that
+arkham's own tests do not spell, such as a `(suf …)` case label), with the
+expected exit code worked out by hand rather than recorded from a native run.
+Each one must produce a module, apart from an explicit refusal list, and with
+`node` on PATH each module RUNS and must match its recorded exit code and
+output. The two renderers print one
 tree, and running both is what proves they print it the same way. It also
 runs the unit tests of `src/web`:
 
