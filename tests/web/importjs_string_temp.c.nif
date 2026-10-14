@@ -1,0 +1,57 @@
+(.nif27)
+(stmts
+ (type :string.0.tst .
+  (object .
+   (fld :bytes.0 .
+    (u 32))
+   (fld :more.0 .
+    (ptr
+     (void)))))
+ (type :Quad.0 .
+  (object .
+   (fld :a.0 .
+    (i 32))
+   (fld :b.0 .
+    (i 32))
+   (fld :c.0 .
+    (i 32))
+   (fld :d.0 .
+    (i 32))))
+ (proc :exit.0
+  (params
+   (param :code.0 .
+    (i 32))).
+  (pragmas
+   (importc "exit"))
+  (stmts .))
+ (proc :jsStr.0
+  (params) string.0.tst
+  (pragmas
+   (importjs "'abc'"))
+  (stmts .))
+ (proc :ends.0
+  (params
+   (param :q.0 . Quad.0))
+  (i 32)
+  .
+  (stmts
+   (ret
+    (add
+     (i 32)
+     (dot q.0 a.0)
+     (dot q.0 d.0)))))
+ (proc :main.0
+  (params)
+  (i 32)
+  (pragmas
+   (exportc "main"))
+  (stmts
+   (var :s.0 . string.0.tst
+    (call jsStr.0))
+   (call exit.0
+    (call ends.0
+     (oconstr Quad.0
+      (kv a.0 20)
+      (kv b.0 1)
+      (kv c.0 2)
+      (kv d.0 22)))))))

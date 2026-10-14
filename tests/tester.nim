@@ -619,6 +619,14 @@ const webUnsupported: seq[string] = @[
   "ulock_wake", "darwin_varargs", "darwin_varargs_many",
 ]
 
+const webJsOnly: seq[string] = @[
+  # Fixtures that exercise the JavaScript-only `importjs` splice: the wasm
+  # target must refuse them by name (a splice has no wasm lowering), and the
+  # JavaScript target must generate AND run them like any other fixture.
+  "importjs_string_temp", # an importjs call returning a `string` takes no
+                          # struct-return slot; the plan must not reserve one
+]
+
 const webRunDivergent: seq[string] = @[
   # Fixtures that generate but whose RUN disagrees with the native oracle.
   # Each is a named divergence, not a tolerance.
@@ -636,7 +644,8 @@ proc webTests() =
   ## `src/web`.
   ##
   ## Every fixture not in `webUnsupported` must produce a module on BOTH
-  ## targets (and the listed ones must be refused by both). With node on
+  ## targets (and the listed ones must be refused by both); a `webJsOnly`
+  ## fixture must be refused by wasm and produced by JavaScript. With node on
   ## PATH, each module then RUNS and must agree with the native oracle's
   ## `.exitcode`/`.output`, bar `webRunDivergent`: the two renderers print one
   ## tree, and the run is what proves they print it the same way.
@@ -672,6 +681,12 @@ proc webTests() =
       removeFile outFile
       let (o, code) = execCmdEx(tool & " -o:" & quoteShell(outFile) &
                                 " " & quoteShell(file))
+      if stem in webJsOnly and target == "wasm":
+        if code == 0:
+          quit "FAILURE web (wasm): " & file & " is JavaScript-only (`webJsOnly`) " &
+               "but the wasm target compiled it"
+        inc refused
+        continue
       if stem in webUnsupported:
         if code == 0:
           quit "FAILURE web (" & target & "): " & file & " is listed in " &
