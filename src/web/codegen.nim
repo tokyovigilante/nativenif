@@ -1416,11 +1416,31 @@ proc callResultType(g: var WebGen; c: Cursor): Cursor =
     result = calleeResultType(g, t)
     while t.hasMore: skip t
 
+proc hasPragma(decl: Cursor; want: LengPragma): bool
+  ## Forward declaration; defined with the pragma helpers. `genCallFrom` needs
+  ## it to route a bodyless `importjs` proc to the splice, and the frame plan
+  ## to know that such a call takes no struct-return slot.
+
+proc isSpliceCall(g: var WebGen; c: Cursor): bool =
+  ## A call to a bodyless `importjs` proc: `genCallFrom` splices its template
+  ## and bridges the result (a Nim `string` arrives through `jsToNimStr`), so
+  ## no struct-return slot is ever taken for it.
+  result = false
+  var tg = sub(c)
+  if tg.kind == Symbol:
+    var found = false
+    let decl = procDeclOf(g, symId(tg), found)
+    result = found and not hasBody(decl) and hasPragma(decl, ImportjsP)
+
 proc callDestSize(g: var WebGen; c: Cursor): (int, int) =
   ## What the CALLER must reserve for a call's result: (size, align) when the
-  ## result is an aggregate (the struct-return slot), (0, 8) otherwise.
+  ## result is an aggregate (the struct-return slot), (0, 8) otherwise. An
+  ## `importjs` splice takes none — `genCallFrom` bridges its result instead —
+  ## so none is planned: a planned slot nobody takes shifts every later
+  ## temporary onto its neighbour's slot.
   result = (0, 8)
   if c.kind != TagLit or c.exprKind != CallC: return
+  if isSpliceCall(g, c): return
   let rt = callResultType(g, c)
   if not rt.cursorIsNil and isAggType(g, rt): result = (byteSize(g, rt), byteAlign(g, rt))
 
@@ -1457,9 +1477,6 @@ type
 proc isHostDeclaration(decl: Cursor): bool
   ## Forward declaration; defined with `ensureProc`. `genCallFrom` needs it to
   ## refuse a bodyless extern (importc/importcpp/importjs) at the call site.
-proc hasPragma(decl: Cursor; want: LengPragma): bool
-  ## Forward declaration; defined with the pragma helpers. `genCallFrom` needs
-  ## it to route a bodyless `importjs` proc to the splice.
 proc planNode(g: var WebGen; pl: var FramePlan; c: Cursor; needsTemp: bool) =
   if c.kind != TagLit: return
   if c.stmtKind == VarS:
